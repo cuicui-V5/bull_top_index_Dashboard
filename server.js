@@ -11,7 +11,7 @@ const port = 3000;
 app.use(cors());
 
 // 定义 CSV 文件路径
-const csvFilePath = path.join(__dirname, '逃顶指数_output_optimized.csv');
+const csvFilePath = path.join(__dirname, '逃顶指数_output_v2.csv');
 
 // 创建一个变量来存储缓存的数据
 let cachedData = null;

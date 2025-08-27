@@ -12,7 +12,6 @@
         <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
         <style>
-            /* 苹果风格：简洁、白色空间、圆角、SF Pro字体（fallback到系统sans-serif） */
             body {
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
                     Roboto, Helvetica, Arial, sans-serif;
@@ -55,7 +54,7 @@
             .index-value {
                 font-size: 48px;
                 font-weight: 700;
-                color: #007aff; /* 苹果蓝 */
+                color: #007aff;
             }
             .risk-level {
                 font-size: 24px;
@@ -143,7 +142,6 @@
             .overlay-menu.show {
                 display: block;
             }
-            /* 性能优化：平滑动画 */
             canvas {
                 transition: all 0.3s ease;
             }
@@ -152,8 +150,6 @@
                 max-width: 1200px;
                 padding: 20px;
                 text-align: center;
-                font-size: 12px;
-                color: #999999;
             }
         </style>
     </head>
@@ -190,7 +186,10 @@
                     <button data-period="3m">3个月</button>
                     <button data-period="6m">6个月</button>
                     <button data-period="1y">1年</button>
-                    <button data-period="2y">2年</button>
+                    <button data-period="3y">3年</button>
+                    <button data-period="5y">5年</button>
+                    <button data-period="10y">10年</button>
+                    <button data-period="all">全部</button>
                 </div>
                 <div
                     class="control-group"
@@ -242,16 +241,9 @@
                         <label>
                             <input
                                 type="checkbox"
-                                data-indicator="csi_close"
+                                data-indicator="hs300_ret"
                             />
-                            中证全指收盘价
-                        </label>
-                        <label>
-                            <input
-                                type="checkbox"
-                                data-indicator="hs300_turnover_rate"
-                            />
-                            沪深300换手率
+                            沪深300收益率
                         </label>
                         <label>
                             <input
@@ -263,17 +255,65 @@
                         <label>
                             <input
                                 type="checkbox"
+                                data-indicator="hs300_amplitude"
+                            />
+                            沪深300振幅
+                        </label>
+                        <label>
+                            <input
+                                type="checkbox"
+                                data-indicator="hs300_turnover_rate"
+                            />
+                            沪深300换手率
+                        </label>
+                        <label>
+                            <input
+                                type="checkbox"
+                                data-indicator="csi_close"
+                            />
+                            中证全指收盘价
+                        </label>
+                        <label>
+                            <input
+                                type="checkbox"
+                                data-indicator="csi_ret"
+                            />
+                            中证全指收益率
+                        </label>
+                        <label>
+                            <input
+                                type="checkbox"
+                                data-indicator="csi_turnover_log"
+                            />
+                            中证全指交易额 (log)
+                        </label>
+                        <label>
+                            <input
+                                type="checkbox"
+                                data-indicator="csi_amplitude"
+                            />
+                            中证全指振幅
+                        </label>
+                        <label>
+                            <input
+                                type="checkbox"
                                 data-indicator="margin_total"
                             />
                             融资余额
                         </label>
-                        <!-- 可以添加更多指标 -->
+                        <label>
+                            <input
+                                type="checkbox"
+                                data-indicator="douyin_search"
+                            />
+                            抖音搜索指数
+                        </label>
                     </div>
                 </div>
                 <canvas id="escape-chart"></canvas>
             </div>
-            <footer>本页面数据仅供参考 不构成投资建议</footer>
         </div>
+        <footer>本网站数据仅供参考 不构成投资建议</footer>
         <script>
             let chart;
             let rawData = [];
@@ -290,7 +330,7 @@
                     const json = await response.json();
                     rawData = json.data
                         .map(item => ({
-                            date: new Date(item["﻿日期"]), // 注意列名有BOM
+                            date: new Date(item["﻿日期"]),
                             escape_index: parseFloat(item.escape_index_0_100),
                             escape_level: item.escape_level,
                             hs300_close: parseFloat(item.hs300_close) || null,
@@ -310,18 +350,15 @@
                             margin_total: parseFloat(item.margin_total) || null,
                             douyin_search:
                                 parseFloat(item.douyin_search) || null,
-                            // 可以添加更多字段
                         }))
-                        .sort((a, b) => a.date - b.date); // 排序确保时间序
+                        .sort((a, b) => a.date - b.date);
 
-                    // 显示最新指数
                     const latest = rawData[rawData.length - 1];
                     document.getElementById("latest-index").textContent =
                         latest.escape_index.toFixed(1);
                     document.getElementById("risk-level").textContent =
                         latest.escape_level;
 
-                    // 设置日期选择器默认值
                     const minDate = rawData[0].date.toISOString().split("T")[0];
                     const maxDate = latest.date.toISOString().split("T")[0];
                     document.getElementById("start-date").value = minDate;
@@ -331,14 +368,13 @@
                     document.getElementById("end-date").min = minDate;
                     document.getElementById("end-date").max = maxDate;
 
-                    // 默认30天
                     updatePeriod("30d");
                 } catch (error) {
                     console.error("数据获取失败:", error);
                 }
             }
 
-            // 聚合数据函数（周/月/年视图）
+            // 聚合数据
             function aggregateData(data, view) {
                 if (view === "day") return data;
 
@@ -363,7 +399,6 @@
                     }
                     aggregated[key].count++;
                     aggregated[key].sum_escape += item.escape_index;
-                    // 对于叠加指标，取平均或最后值（这里用平均）
                     Object.keys(overlays).forEach(ind => {
                         if (!aggregated[key].averages[ind])
                             aggregated[key].averages[ind] = {
@@ -391,6 +426,20 @@
                     .sort((a, b) => a.date - b.date);
             }
 
+            // 归一化数据到0-100
+            function normalizeData(data, key) {
+                const values = data.map(d => d[key]).filter(v => v !== null);
+                if (values.length === 0)
+                    return data.map(d => ({ x: d.date, y: null }));
+                const min = Math.min(...values);
+                const max = Math.max(...values);
+                const range = max - min || 1; // 防止除以0
+                return data.map(d => ({
+                    x: d.date,
+                    y: d[key] !== null ? ((d[key] - min) / range) * 100 : null,
+                }));
+            }
+
             // 更新图表
             function updateChart() {
                 const aggregatedData = aggregateData(filteredData, currentView);
@@ -410,14 +459,24 @@
                     },
                 ];
 
+                // 添加归一化的叠加数据集
                 Object.keys(overlays).forEach(ind => {
                     if (overlays[ind]) {
                         datasets.push({
-                            label: ind.replace("_", " ").toUpperCase(),
-                            data: aggregatedData.map(d => ({
-                                x: d.date,
-                                y: d[ind],
-                            })),
+                            label: {
+                                hs300_close: "沪深300收盘价",
+                                hs300_ret: "沪深300收益率",
+                                hs300_turnover_log: "沪深300交易额 (log)",
+                                hs300_amplitude: "沪深300振幅",
+                                hs300_turnover_rate: "沪深300换手率",
+                                csi_close: "中证全指收盘价",
+                                csi_ret: "中证全指收益率",
+                                csi_turnover_log: "中证全指交易额 (log)",
+                                csi_amplitude: "中证全指振幅",
+                                margin_total: "融资余额",
+                                douyin_search: "抖音搜索指数",
+                            }[ind],
+                            data: normalizeData(aggregatedData, ind),
                             borderColor: getColorForIndicator(ind),
                             yAxisID: "y1",
                             tension: 0.4,
@@ -449,7 +508,7 @@
                                                 month: "2-digit",
                                                 day: "2-digit",
                                             },
-                                        ); // 格式化为 YYYY-MM-DD
+                                        );
                                     },
                                 },
                                 backgroundColor: "#ffffff",
@@ -494,8 +553,13 @@
                             y1: {
                                 type: "linear",
                                 position: "right",
+                                title: {
+                                    display: true,
+                                    text: "叠加指标 (归一化)",
+                                },
+                                min: 0,
+                                max: 100,
                                 grid: { drawOnChartArea: false },
-                                title: { display: true, text: "叠加指标" },
                             },
                         },
                         elements: {
@@ -507,14 +571,21 @@
                     },
                 });
             }
+
             // 获取指标颜色
             function getColorForIndicator(ind) {
                 const colors = {
                     hs300_close: "#ff9500",
-                    csi_close: "#34c759",
-                    hs300_turnover_rate: "#af52de",
+                    hs300_ret: "#ffcc00",
                     hs300_turnover_log: "#ff2d55",
-                    margin_total: "#5ac8fa",
+                    hs300_amplitude: "#5856d6",
+                    hs300_turnover_rate: "#af52de",
+                    csi_close: "#34c759",
+                    csi_ret: "#00c7be",
+                    csi_turnover_log: "#ff3b30",
+                    csi_amplitude: "#5ac8fa",
+                    margin_total: "#007aff",
+                    douyin_search: "#ff9500",
                 };
                 return colors[ind] || "#000000";
             }
@@ -540,9 +611,20 @@
                         startDate = new Date(latestDate);
                         startDate.setFullYear(startDate.getFullYear() - 1);
                         break;
-                    case "2y":
+                    case "3y":
                         startDate = new Date(latestDate);
-                        startDate.setFullYear(startDate.getFullYear() - 2);
+                        startDate.setFullYear(startDate.getFullYear() - 3);
+                        break;
+                    case "5y":
+                        startDate = new Date(latestDate);
+                        startDate.setFullYear(startDate.getFullYear() - 5);
+                        break;
+                    case "10y":
+                        startDate = new Date(latestDate);
+                        startDate.setFullYear(startDate.getFullYear() - 10);
+                        break;
+                    case "all":
+                        startDate = rawData[0].date;
                         break;
                 }
                 filteredData = rawData.filter(d => d.date >= startDate);
@@ -613,4 +695,56 @@
             fetchData();
         </script>
     </body>
+    <script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+            return cell !== "" && cell != null;
+        }
+        function loadFileData(filename) {
+            if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+                try {
+                    var workbook = XLSX.read(gk_fileData[filename], {
+                        type: "base64",
+                    });
+                    var firstSheetName = workbook.SheetNames[0];
+                    var worksheet = workbook.Sheets[firstSheetName];
+
+                    // Convert sheet to JSON to filter blank rows
+                    var jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                        header: 1,
+                        blankrows: false,
+                        defval: "",
+                    });
+                    // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                    var filteredData = jsonData.filter(row =>
+                        row.some(filledCell),
+                    );
+
+                    // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                    var headerRowIndex = filteredData.findIndex(
+                        (row, index) =>
+                            row.filter(filledCell).length >=
+                            filteredData[index + 1]?.filter(filledCell).length,
+                    );
+                    // Fallback
+                    if (headerRowIndex === -1 || headerRowIndex > 25) {
+                        headerRowIndex = 0;
+                    }
+
+                    // Convert filtered JSON back to CSV
+                    var csv = XLSX.utils.aoa_to_sheet(
+                        filteredData.slice(headerRowIndex),
+                    ); // Create a new sheet from filtered array of arrays
+                    csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                    return csv;
+                } catch (e) {
+                    console.error(e);
+                    return "";
+                }
+            }
+            return gk_fileData[filename] || "";
+        }
+    </script>
 </html>
