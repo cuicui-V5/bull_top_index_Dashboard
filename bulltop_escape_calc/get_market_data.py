@@ -61,20 +61,20 @@ def main():
     主函数，依次执行获取数据和保存的操作。
     """
     # 获取融资融券数据
-    # get_margin_data()
+    get_margin_data()
     
     # 延时，防止连续调用接口过快
-    # time.sleep(5)
+    time.sleep(5)
     
     # 获取沪深300历史市盈率数据
     get_csi300_pe_data()
     
     # 延时，防止连续调用接口过快
-    # time.sleep(5)
+    time.sleep(5)
     
     # 获取沪深300和中证全指的历史行情数据
-    # get_index_data(symbol="000300", name="沪深300")
-    # get_index_data(symbol="000985", name="中证全指")
+    get_index_data(symbol="000300", name="沪深300")
+    get_index_data(symbol="000985", name="中证全指")
 
 if __name__ == "__main__":
     main()
