@@ -4,7 +4,7 @@ import { Layers, TrendingUp, TrendingDown, X } from "lucide-react";
 const OVERLAY_OPTIONS = [
     {
         key: "hs300_close",
-        label: "HS300收盘价",
+        label: "沪深300收盘价",
         color: "#3b82f6",
         unit: "点",
         scale: "linear",
