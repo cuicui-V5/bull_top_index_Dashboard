@@ -20,8 +20,8 @@ let cachedData = null;
 
 // ✅ 配置 HTTPS 选项
 const httpsOptions = {
-    key: fs.readFileSync(path.join(__dirname, "private.key")), // 读取私钥文件
-    cert: fs.readFileSync(path.join(__dirname, "cert.crt")), // 读取证书文件
+    key: fs.readFileSync("/root/ygkkkca/private.key"), // 读取私钥文件
+    cert: fs.readFileSync("/root/ygkkkca/cert.crt"), // 读取证书文件
 };
 
 // 异步读取 CSV 文件并将其转换为 JSON 数组
