@@ -55,6 +55,15 @@ const OVERLAY_OPTIONS = [
         maxValue: null, // 动态计算
     },
     {
+        key: "shanghai_close",
+        label: "上证指数收盘价",
+        color: "#dc2626",
+        unit: "点",
+        scale: "linear",
+        minValue: 0,
+        maxValue: null, // 动态计算
+    },
+    {
         key: "hs300_turnover_rate",
         label: "换手率",
         color: "#f59e0b",
@@ -128,6 +137,7 @@ function parseRow(r) {
         date,
         dateStr: dateRaw,
         hs300_close: safeNum(r.hs300_close),
+        shanghai_close: safeNum(r.shanghai_close),
         hs300_ret: safeNum(r.hs300_ret),
         hs300_turnover_log: safeNum(r.hs300_turnover_log),
         hs300_amplitude: safeNum(r.hs300_amplitude),
@@ -202,6 +212,11 @@ function aggregateByPeriod(data, period) {
             dateStr: last.dateStr,
             escape_index_0_100: Number(meanEscape.toFixed(4)),
             hs300_close: last.hs300_close,
+            shanghai_close: last.shanghai_close,
+            douyin_search: last.douyin_search,
+            margin_total: last.margin_total,
+            hs300_turnover_rate: last.hs300_turnover_rate,
+            crowding_z: last.crowding_z,
             raw: last.raw,
         });
     }
@@ -247,6 +262,7 @@ function exportToCSV(data, filename = "escape_index_data.csv") {
         "日期",
         "逃顶指数",
         "HS300收盘价",
+        "上证指数收盘价",
         "换手率",
         "融资余额",
         "抖音热度",
@@ -260,6 +276,7 @@ function exportToCSV(data, filename = "escape_index_data.csv") {
                 row.date,
                 row.escape_index_0_100 || "",
                 row.hs300_close || "",
+                row.shanghai_close || "",
                 row.raw?.hs300_turnover_rate || "",
                 row.raw?.margin_total || "",
                 row.raw?.douyin_search || "",
@@ -330,6 +347,14 @@ export default function EscapeIndexDashboard() {
                 .filter(r => r.date && !Number.isNaN(r.date.getTime()));
             parsed.sort((a, b) => a.date - b.date);
 
+            // 调试信息
+            console.log("Data fetched - total records:", parsed.length);
+            console.log("Latest record:", parsed[parsed.length - 1]);
+            console.log(
+                "Latest douyin_search:",
+                parsed[parsed.length - 1]?.douyin_search,
+            );
+
             setRawData(parsed);
             // default date range: quickRange
             const latest = parsed[parsed.length - 1].date;
@@ -377,6 +402,7 @@ export default function EscapeIndexDashboard() {
             date: d.date.toISOString().slice(0, 10),
             escape: d.escape_index_0_100,
             hs300_close: d.hs300_close,
+            shanghai_close: d.shanghai_close,
             raw: d.raw,
         }));
         // downsample if necessary
@@ -633,7 +659,16 @@ export default function EscapeIndexDashboard() {
                             if (rawValue !== null && rawValue !== undefined) {
                                 const formattedValue =
                                     typeof rawValue === "number"
-                                        ? rawValue.toLocaleString()
+                                        ? name === "douyin_search"
+                                            ? rawValue >= 1000000
+                                                ? (rawValue / 1000000).toFixed(
+                                                      1,
+                                                  ) + "M"
+                                                : rawValue >= 1000
+                                                ? (rawValue / 1000).toFixed(1) +
+                                                  "K"
+                                                : rawValue.toLocaleString()
+                                            : rawValue.toLocaleString()
                                         : rawValue;
                                 return [
                                     `${formattedValue}${overlayOption.unit}`,
@@ -660,6 +695,11 @@ export default function EscapeIndexDashboard() {
                                     <div>
                                         hs300 收盘: {p.hs300_close ?? "—"}
                                     </div>
+                                    {raw.shanghai_close !== undefined && (
+                                        <div>
+                                            上证指数: {raw.shanghai_close}
+                                        </div>
+                                    )}
                                     {raw.hs300_turnover_rate !== undefined && (
                                         <div>
                                             换手率: {raw.hs300_turnover_rate}
@@ -669,7 +709,19 @@ export default function EscapeIndexDashboard() {
                                         <div>融资余额: {raw.margin_total}</div>
                                     )}
                                     {raw.douyin_search !== undefined && (
-                                        <div>抖音热度: {raw.douyin_search}</div>
+                                        <div>
+                                            抖音热度:{" "}
+                                            {raw.douyin_search >= 1000000
+                                                ? (
+                                                      raw.douyin_search /
+                                                      1000000
+                                                  ).toFixed(1) + "M"
+                                                : raw.douyin_search >= 1000
+                                                ? (
+                                                      raw.douyin_search / 1000
+                                                  ).toFixed(1) + "K"
+                                                : raw.douyin_search.toLocaleString()}
+                                        </div>
                                     )}
                                     {raw.crowding_z !== undefined && (
                                         <div>拥挤度 Z: {raw.crowding_z}</div>
@@ -775,7 +827,16 @@ export default function EscapeIndexDashboard() {
                             if (rawValue !== null && rawValue !== undefined) {
                                 const formattedValue =
                                     typeof rawValue === "number"
-                                        ? rawValue.toLocaleString()
+                                        ? name === "douyin_search"
+                                            ? rawValue >= 1000000
+                                                ? (rawValue / 1000000).toFixed(
+                                                      1,
+                                                  ) + "M"
+                                                : rawValue >= 1000
+                                                ? (rawValue / 1000).toFixed(1) +
+                                                  "K"
+                                                : rawValue.toLocaleString()
+                                            : rawValue.toLocaleString()
                                         : rawValue;
                                 return [
                                     `${formattedValue}${overlayOption.unit}`,
@@ -882,7 +943,16 @@ export default function EscapeIndexDashboard() {
                             if (rawValue !== null && rawValue !== undefined) {
                                 const formattedValue =
                                     typeof rawValue === "number"
-                                        ? rawValue.toLocaleString()
+                                        ? name === "douyin_search"
+                                            ? rawValue >= 1000000
+                                                ? (rawValue / 1000000).toFixed(
+                                                      1,
+                                                  ) + "M"
+                                                : rawValue >= 1000
+                                                ? (rawValue / 1000).toFixed(1) +
+                                                  "K"
+                                                : rawValue.toLocaleString()
+                                            : rawValue.toLocaleString()
                                         : rawValue;
                                 return [
                                     `${formattedValue}${overlayOption.unit}`,
@@ -975,14 +1045,16 @@ export default function EscapeIndexDashboard() {
                             <span className="text-sm font-medium text-slate-600 mb-1">
                                 当前逃顶指数
                             </span>
-                            <div className="flex items-baseline gap-3">
-                                <span className="text-5xl font-bold text-slate-900">
+                            <div className="flex flex-col items-end gap-2">
+                                <div className="flex items-baseline gap-3">
+                                    <span className="text-5xl font-bold text-slate-900">
+                                        {latestSummary &&
+                                            (latestSummary.escape_index_0_100 ??
+                                                "—")}
+                                    </span>
                                     {latestSummary &&
-                                        (latestSummary.escape_index_0_100 ??
-                                            "—")}
-                                </span>
-                                {latestSummary &&
-                                    levelBadge(latestSummary.escape_level)}
+                                        levelBadge(latestSummary.escape_level)}
+                                </div>
                             </div>
                             <span className="text-xs text-slate-400 mt-2">
                                 更新：
@@ -1084,7 +1156,83 @@ export default function EscapeIndexDashboard() {
                                         说明
                                     </div>
                                     <div className="text-sm text-slate-600">
-                                        当指数高于阈值（如80）系统会发出撤退建议。结合资金面与搜索热度进行判断，避免单一因子误报。
+                                        {latestSummary &&
+                                        latestSummary.escape_index_0_100 ? (
+                                            <>
+                                                {latestSummary.escape_index_0_100 >=
+                                                80 ? (
+                                                    <div className="space-y-2">
+                                                        <div className="font-medium text-red-600">
+                                                            ⚠️ 高风险区域
+                                                        </div>
+                                                        <div>
+                                                            •
+                                                            建议减仓或清仓，市场过热风险较大
+                                                        </div>
+                                                        <div>
+                                                            •
+                                                            关注资金面变化，避免追高
+                                                        </div>
+                                                        <div>
+                                                            •
+                                                            可考虑配置防御性资产
+                                                        </div>
+                                                    </div>
+                                                ) : latestSummary.escape_index_0_100 >=
+                                                  70 ? (
+                                                    <div className="space-y-2">
+                                                        <div className="font-medium text-orange-600">
+                                                            ⚠️ 中等风险区域
+                                                        </div>
+                                                        <div>
+                                                            •
+                                                            建议适度减仓，保持谨慎
+                                                        </div>
+                                                        <div>
+                                                            • 关注市场情绪变化
+                                                        </div>
+                                                        <div>
+                                                            • 避免大幅加仓
+                                                        </div>
+                                                    </div>
+                                                ) : latestSummary.escape_index_0_100 >=
+                                                  50 ? (
+                                                    <div className="space-y-2">
+                                                        <div className="font-medium text-blue-600">
+                                                            📊 正常区域
+                                                        </div>
+                                                        <div>
+                                                            •
+                                                            市场情绪正常，可保持当前仓位
+                                                        </div>
+                                                        <div>
+                                                            • 关注趋势变化
+                                                        </div>
+                                                        <div>
+                                                            • 适度配置，分散风险
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        <div className="font-medium text-green-600">
+                                                            💡 低风险区域
+                                                        </div>
+                                                        <div>
+                                                            •
+                                                            市场情绪偏冷，可能存在机会
+                                                        </div>
+                                                        <div>
+                                                            • 可考虑适度加仓
+                                                        </div>
+                                                        <div>
+                                                            • 关注基本面改善信号
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            "当指数高于阈值（如80）系统会发出撤退建议。结合资金面与搜索热度进行判断，避免单一因子误报。"
+                                        )}
                                     </div>
                                 </div>
 
@@ -1113,7 +1261,7 @@ export default function EscapeIndexDashboard() {
                             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-3">
                                 <div className="flex items-center gap-3">
                                     <Activity size={18} />
-                                    <div className="font-semibold">
+                                    <div className="text-xs font-semibold">
                                         逃顶指数变化
                                     </div>
                                     <div className="text-xs text-slate-400 hidden sm:inline">
@@ -1403,7 +1551,19 @@ export default function EscapeIndexDashboard() {
                             {/* 市场情绪面板 */}
                             <MarketSentimentPanel
                                 data={filtered}
-                                latestData={latestSummary}
+                                latestData={
+                                    filtered && filtered.length > 0
+                                        ? [...filtered]
+                                              .reverse()
+                                              .find(
+                                                  d =>
+                                                      d.douyin_search !==
+                                                          null &&
+                                                      d.douyin_search !==
+                                                          undefined,
+                                              )
+                                        : null
+                                }
                             />
                         </div>
                     </section>

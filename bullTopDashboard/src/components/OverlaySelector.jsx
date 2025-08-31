@@ -12,6 +12,15 @@ const OVERLAY_OPTIONS = [
         maxValue: null, // 动态计算
     },
     {
+        key: "shanghai_close",
+        label: "上证指数收盘价",
+        color: "#dc2626",
+        unit: "点",
+        scale: "linear",
+        minValue: 0,
+        maxValue: null, // 动态计算
+    },
+    {
         key: "hs300_turnover_rate",
         label: "换手率",
         color: "#f59e0b",

@@ -13,13 +13,28 @@ export default function MarketSentimentPanel({ data, latestData }) {
 
     // 计算情绪指标变化
     const sentiment = React.useMemo(() => {
-        if (data.length < 2) return null;
+        if (!data || !latestData) return null;
 
-        const current = latestData;
-        const previous = data[data.length - 2];
+        // 找到latestData在data中的索引
+        const idx = data.findIndex(d => d === latestData);
+
+        // 辅助函数：向前找前一条有值的
+        function findPrevWithValue(key) {
+            for (let i = idx - 1; i >= 0; i--) {
+                if (data[i][key] !== null && data[i][key] !== undefined) {
+                    return data[i][key];
+                }
+            }
+            return null;
+        }
 
         const calculateChange = (currentVal, prevVal) => {
-            if (!currentVal || !prevVal)
+            if (
+                currentVal === null ||
+                currentVal === undefined ||
+                prevVal === null ||
+                prevVal === undefined
+            )
                 return { change: 0, percent: 0, trend: "flat" };
             const change = currentVal - prevVal;
             const percent = prevVal !== 0 ? (change / prevVal) * 100 : 0;
@@ -32,18 +47,21 @@ export default function MarketSentimentPanel({ data, latestData }) {
 
         return {
             douyin: calculateChange(
-                current.douyin_search,
-                previous.douyin_search,
+                latestData.douyin_search,
+                findPrevWithValue("douyin_search"),
             ),
             margin: calculateChange(
-                current.margin_total,
-                previous.margin_total,
+                latestData.margin_total,
+                findPrevWithValue("margin_total"),
             ),
             turnover: calculateChange(
-                current.hs300_turnover_rate,
-                previous.hs300_turnover_rate,
+                latestData.hs300_turnover_rate,
+                findPrevWithValue("hs300_turnover_rate"),
             ),
-            crowding: calculateChange(current.crowding_z, previous.crowding_z),
+            crowding: calculateChange(
+                latestData.crowding_z,
+                findPrevWithValue("crowding_z"),
+            ),
         };
     }, [data, latestData]);
 
@@ -87,9 +105,13 @@ export default function MarketSentimentPanel({ data, latestData }) {
                     )}
                 </div>
                 <div className="text-lg font-bold">
-                    {value !== null && value !== undefined
+                    {value !== null && value !== undefined && value !== ""
                         ? typeof value === "number"
-                            ? value.toLocaleString()
+                            ? value >= 1000000
+                                ? (value / 1000000).toFixed(1) + "M"
+                                : value >= 1000
+                                ? (value / 1000).toFixed(1) + "K"
+                                : value.toLocaleString()
                             : value
                         : "—"}
                 </div>
@@ -110,7 +132,7 @@ export default function MarketSentimentPanel({ data, latestData }) {
 
         // 简单的情绪评分逻辑
         let score = 0;
-        if (latestData.douyin_search > 100) score += 1;
+        if (latestData.douyin_search > 100000) score += 1; // 调整抖音热度阈值
         if (latestData.margin_total > 10000) score += 1;
         if (latestData.hs300_turnover_rate > 2) score += 1;
         if (latestData.crowding_z > 1) score += 1;
@@ -172,7 +194,7 @@ export default function MarketSentimentPanel({ data, latestData }) {
 
                     {renderIndicator(
                         "换手率",
-                        latestData.hs300_turnover_rate,
+                        latestData.hs300_turnover_rate + "%",
                         sentiment.turnover,
                         <Activity className="w-4 h-4" />,
                         "yellow",
