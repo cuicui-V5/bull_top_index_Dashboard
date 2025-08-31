@@ -328,8 +328,8 @@ export default function EscapeIndexDashboard() {
         showBrush: true,
     });
 
-    // 行情叠加状态
-    const [selectedOverlays, setSelectedOverlays] = useState([]);
+    // 行情叠加状态 - 默认叠加显示上证指数
+    const [selectedOverlays, setSelectedOverlays] = useState(["shanghai_close"]);
 
     const fetchData = useCallback(async (showLoading = true) => {
         if (showLoading) setLoading(true);
@@ -690,45 +690,31 @@ export default function EscapeIndexDashboard() {
                                 className="p-3"
                                 style={{ minWidth: 220 }}>
                                 <div className="font-medium">{label}</div>
-                                <div className="mt-2 text-sm text-slate-600">
+                                <div className="mt-2 text-sm text-slate-600 space-y-1">
                                     <div>逃顶指数: {p.escape ?? "—"}</div>
                                     <div>
-                                        hs300 收盘: {p.hs300_close ?? "—"}
+                                        上证指数收盘价: {raw.shanghai_close !== undefined ? parseFloat(raw.shanghai_close).toFixed(2) + "点" : "—"}
                                     </div>
-                                    {raw.shanghai_close !== undefined && (
-                                        <div>
-                                            上证指数: {raw.shanghai_close}
-                                        </div>
-                                    )}
-                                    {raw.hs300_turnover_rate !== undefined && (
-                                        <div>
-                                            换手率: {raw.hs300_turnover_rate}
-                                        </div>
-                                    )}
-                                    {raw.margin_total !== undefined && (
-                                        <div>融资余额: {raw.margin_total}</div>
-                                    )}
-                                    {raw.douyin_search !== undefined && (
-                                        <div>
-                                            抖音热度:{" "}
-                                            {raw.douyin_search >= 1000000
-                                                ? (
-                                                      raw.douyin_search /
-                                                      1000000
-                                                  ).toFixed(1) + "M"
+                                    <div>
+                                        沪深300收盘价: {p.hs300_close !== undefined ? parseFloat(p.hs300_close).toFixed(2) + "点" : "—"}
+                                    </div>
+                                    <div>
+                                        换手率: {raw.hs300_turnover_rate !== undefined ? parseFloat(raw.hs300_turnover_rate).toFixed(2) + "%" : "—"}
+                                    </div>
+                                    <div>
+                                        融资余额: {raw.margin_total !== undefined ? parseFloat(raw.margin_total).toFixed(1) + "亿" : "—"}
+                                    </div>
+                                    <div>
+                                        抖音热度:{" "}
+                                        {raw.douyin_search !== undefined
+                                            ? raw.douyin_search >= 1000000
+                                                ? (raw.douyin_search / 1000000).toFixed(1) + "M"
                                                 : raw.douyin_search >= 1000
-                                                ? (
-                                                      raw.douyin_search / 1000
-                                                  ).toFixed(1) + "K"
-                                                : raw.douyin_search.toLocaleString()}
-                                        </div>
-                                    )}
-                                    {raw.crowding_z !== undefined && (
-                                        <div>拥挤度 Z: {raw.crowding_z}</div>
-                                    )}
-                                    {raw.escape_level !== undefined && (
-                                        <div>风险等级: {raw.escape_level}</div>
-                                    )}
+                                                ? (raw.douyin_search / 1000).toFixed(1) + "K"
+                                                : raw.douyin_search.toLocaleString()
+                                            : "—"}
+                                    </div>
+                                    <div>风险等级: {raw.escape_level ?? "—"}</div>
                                 </div>
                             </div>
                         );
@@ -825,23 +811,31 @@ export default function EscapeIndexDashboard() {
                         if (overlayOption) {
                             const rawValue = props.payload.raw?.[name];
                             if (rawValue !== null && rawValue !== undefined) {
-                                const formattedValue =
-                                    typeof rawValue === "number"
-                                        ? name === "douyin_search"
-                                            ? rawValue >= 1000000
-                                                ? (rawValue / 1000000).toFixed(
-                                                      1,
-                                                  ) + "M"
-                                                : rawValue >= 1000
-                                                ? (rawValue / 1000).toFixed(1) +
-                                                  "K"
-                                                : rawValue.toLocaleString()
-                                            : rawValue.toLocaleString()
-                                        : rawValue;
-                                return [
-                                    `${formattedValue}${overlayOption.unit}`,
-                                    overlayOption.label,
-                                ];
+                                // 根据不同的指标类型进行格式化
+                                if (name === "shanghai_close" || name === "hs300_close") {
+                                    const formattedValue = parseFloat(rawValue).toFixed(2);
+                                    return [`${formattedValue}点`, overlayOption.label];
+                                } else if (name === "hs300_turnover_rate") {
+                                    const formattedValue = parseFloat(rawValue).toFixed(2);
+                                    return [`${formattedValue}%`, overlayOption.label];
+                                } else if (name === "margin_total") {
+                                    const formattedValue = parseFloat(rawValue).toFixed(1);
+                                    return [`${formattedValue}亿`, overlayOption.label];
+                                } else if (name === "douyin_search") {
+                                    const formattedValue =
+                                        rawValue >= 1000000
+                                            ? (rawValue / 1000000).toFixed(1) + "M"
+                                            : rawValue >= 1000
+                                            ? (rawValue / 1000).toFixed(1) + "K"
+                                            : rawValue.toLocaleString();
+                                    return [formattedValue, overlayOption.label];
+                                } else {
+                                    const formattedValue =
+                                        typeof rawValue === "number"
+                                            ? rawValue.toLocaleString()
+                                            : rawValue;
+                                    return [`${formattedValue}${overlayOption.unit}`, overlayOption.label];
+                                }
                             }
                         }
 
@@ -941,23 +935,31 @@ export default function EscapeIndexDashboard() {
                         if (overlayOption) {
                             const rawValue = props.payload.raw?.[name];
                             if (rawValue !== null && rawValue !== undefined) {
-                                const formattedValue =
-                                    typeof rawValue === "number"
-                                        ? name === "douyin_search"
-                                            ? rawValue >= 1000000
-                                                ? (rawValue / 1000000).toFixed(
-                                                      1,
-                                                  ) + "M"
-                                                : rawValue >= 1000
-                                                ? (rawValue / 1000).toFixed(1) +
-                                                  "K"
-                                                : rawValue.toLocaleString()
-                                            : rawValue.toLocaleString()
-                                        : rawValue;
-                                return [
-                                    `${formattedValue}${overlayOption.unit}`,
-                                    overlayOption.label,
-                                ];
+                                // 根据不同的指标类型进行格式化
+                                if (name === "shanghai_close" || name === "hs300_close") {
+                                    const formattedValue = parseFloat(rawValue).toFixed(2);
+                                    return [`${formattedValue}点`, overlayOption.label];
+                                } else if (name === "hs300_turnover_rate") {
+                                    const formattedValue = parseFloat(rawValue).toFixed(2);
+                                    return [`${formattedValue}%`, overlayOption.label];
+                                } else if (name === "margin_total") {
+                                    const formattedValue = parseFloat(rawValue).toFixed(1);
+                                    return [`${formattedValue}亿`, overlayOption.label];
+                                } else if (name === "douyin_search") {
+                                    const formattedValue =
+                                        rawValue >= 1000000
+                                            ? (rawValue / 1000000).toFixed(1) + "M"
+                                            : rawValue >= 1000
+                                            ? (rawValue / 1000).toFixed(1) + "K"
+                                            : rawValue.toLocaleString();
+                                    return [formattedValue, overlayOption.label];
+                                } else {
+                                    const formattedValue =
+                                        typeof rawValue === "number"
+                                            ? rawValue.toLocaleString()
+                                            : rawValue;
+                                    return [`${formattedValue}${overlayOption.unit}`, overlayOption.label];
+                                }
                             }
                         }
 
