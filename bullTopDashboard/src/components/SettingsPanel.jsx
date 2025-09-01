@@ -72,7 +72,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onReset }) {
 
                                 <div>
                                     <label className="text-xs text-slate-500">
-                                        警告线阈值
+                                        警戒线阈值
                                     </label>
                                     <input
                                         type="number"
@@ -109,22 +109,9 @@ export default function SettingsPanel({ settings, onSettingsChange, onReset }) {
                                         }
                                         className="rounded"
                                     />
-                                    显示趋势线
+                                    显示危险线
                                 </label>
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={localSettings.showGrid}
-                                        onChange={e =>
-                                            updateSetting(
-                                                "showGrid",
-                                                e.target.checked,
-                                            )
-                                        }
-                                        className="rounded"
-                                    />
-                                    显示网格
-                                </label>
+
                                 <label className="flex items-center gap-2 text-sm">
                                     <input
                                         type="checkbox"

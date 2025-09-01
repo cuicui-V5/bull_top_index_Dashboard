@@ -42,6 +42,7 @@ import StatisticsPanel from "./StatisticsPanel";
 import MarketSentimentPanel from "./MarketSentimentPanel";
 import SettingsPanel from "./SettingsPanel";
 import OverlaySelector from "./OverlaySelector";
+import AboutModal from "./AboutModal";
 
 // 叠加选项配置
 const OVERLAY_OPTIONS = [
@@ -251,6 +252,50 @@ function calculateTrend(data, days = 7) {
     };
 }
 
+// Calculate consecutive days above threshold
+function calculateConsecutiveDays(data, threshold = 80) {
+    if (!data || data.length === 0) return 0;
+
+    let count = 0;
+    // 从最新数据开始向前遍历
+    for (let i = data.length - 1; i >= 0; i--) {
+        const escapeIndex = data[i].escape_index_0_100;
+        if (
+            escapeIndex !== null &&
+            escapeIndex !== undefined &&
+            escapeIndex >= threshold
+        ) {
+            count++;
+        } else {
+            break; // 遇到不满足条件的数据就停止
+        }
+    }
+
+    return count;
+}
+
+// Calculate consecutive days below threshold
+function calculateConsecutiveDaysBelow(data, threshold = 60) {
+    if (!data || data.length === 0) return 0;
+
+    let count = 0;
+    // 从最新数据开始向前遍历
+    for (let i = data.length - 1; i >= 0; i--) {
+        const escapeIndex = data[i].escape_index_0_100;
+        if (
+            escapeIndex !== null &&
+            escapeIndex !== undefined &&
+            escapeIndex < threshold
+        ) {
+            count++;
+        } else {
+            break; // 遇到不满足条件的数据就停止
+        }
+    }
+
+    return count;
+}
+
 // Export data to CSV
 function exportToCSV(data, filename = "escape_index_data.csv") {
     if (!data || data.length === 0) {
@@ -306,6 +351,7 @@ export default function EscapeIndexDashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
+    const [isAboutOpen, setIsAboutOpen] = useState(false);
 
     // UI state
     const [rangeStart, setRangeStart] = useState(null);
@@ -313,7 +359,6 @@ export default function EscapeIndexDashboard() {
     const [quickRange, setQuickRange] = useState("1year");
     const [view, setView] = useState("day"); // day, week, month, year
     const [maxPoints, setMaxPoints] = useState(800);
-    const [chartType, setChartType] = useState("line"); // line, area, bar
     const [showTrend, setShowTrend] = useState(true);
 
     // 设置状态
@@ -323,6 +368,7 @@ export default function EscapeIndexDashboard() {
         defaultRange: "1y",
         dangerThreshold: 85,
         warningThreshold: 75,
+        safeThreshold: 60,
         showTrend: true,
         showGrid: true,
         showBrush: true,
@@ -549,6 +595,7 @@ export default function EscapeIndexDashboard() {
             defaultRange: "1y",
             dangerThreshold: 80,
             warningThreshold: 70,
+            safeThreshold: 60,
             showTrend: true,
             showGrid: true,
             showBrush: true,
@@ -614,7 +661,7 @@ export default function EscapeIndexDashboard() {
         );
     }
 
-    // render chart based on type
+    // render chart
     function renderChart() {
         if (!processedChartData) return null;
 
@@ -623,7 +670,7 @@ export default function EscapeIndexDashboard() {
             margin: { top: 20, right: 30, left: 0, bottom: 0 },
         };
 
-        const renderLine = () => (
+        return (
             <LineChart {...commonProps}>
                 {settings.showGrid && (
                     <CartesianGrid
@@ -644,10 +691,15 @@ export default function EscapeIndexDashboard() {
                         borderRadius: 8,
                         boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
                         border: "none",
+                        backdropFilter: "blur(10px)",
+                        backgroundColor: "rgba(255, 255, 255, 0.9)",
                     }}
                     contentStyle={{
-                        background: "white",
+                        background: "transparent",
                         borderRadius: 8,
+                        backdropFilter: "blur(10px)",
+                        backgroundColor: "rgba(255, 255, 255, 0.9)",
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
                     }}
                     formatter={(value, name, props) => {
                         if (name === "escape") return [value, "逃顶指数"];
@@ -789,7 +841,13 @@ export default function EscapeIndexDashboard() {
                             y={settings.warningThreshold}
                             stroke="#f59e0b"
                             strokeDasharray="3 3"
-                            label={{ value: "警告线", position: "top" }}
+                            label={{ value: "警戒线", position: "top" }}
+                        />
+                        <ReferenceLine
+                            y={settings.safeThreshold}
+                            stroke="#22c55e"
+                            strokeDasharray="3 3"
+                            label={{ value: "安全线", position: "top" }}
                         />
                     </>
                 )}
@@ -803,313 +861,18 @@ export default function EscapeIndexDashboard() {
                 )}
             </LineChart>
         );
-
-        const renderArea = () => (
-            <AreaChart {...commonProps}>
-                {settings.showGrid && (
-                    <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#f1f5f9"
-                    />
-                )}
-                <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 12 }}
-                />
-                <YAxis
-                    domain={[0, 100]}
-                    tick={{ fontSize: 12 }}
-                />
-                <Tooltip
-                    wrapperStyle={{
-                        borderRadius: 8,
-                        boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
-                        border: "none",
-                    }}
-                    contentStyle={{
-                        background: "white",
-                        borderRadius: 8,
-                    }}
-                    formatter={(value, name, props) => {
-                        if (name === "escape") return [value, "逃顶指数"];
-
-                        // 处理叠加数据的显示
-                        const overlayOption = OVERLAY_OPTIONS.find(
-                            opt => opt.key === name,
-                        );
-                        if (overlayOption) {
-                            const rawValue = props.payload.raw?.[name];
-                            if (rawValue !== null && rawValue !== undefined) {
-                                // 根据不同的指标类型进行格式化
-                                if (
-                                    name === "shanghai_close" ||
-                                    name === "hs300_close"
-                                ) {
-                                    const formattedValue =
-                                        parseFloat(rawValue).toFixed(2);
-                                    return [
-                                        `${formattedValue}点`,
-                                        overlayOption.label,
-                                    ];
-                                } else if (name === "hs300_turnover_rate") {
-                                    const formattedValue =
-                                        parseFloat(rawValue).toFixed(2);
-                                    return [
-                                        `${formattedValue}%`,
-                                        overlayOption.label,
-                                    ];
-                                } else if (name === "margin_total") {
-                                    const formattedValue =
-                                        parseFloat(rawValue).toFixed(1);
-                                    return [
-                                        `${formattedValue}亿`,
-                                        overlayOption.label,
-                                    ];
-                                } else if (name === "douyin_search") {
-                                    const formattedValue =
-                                        rawValue >= 1000000
-                                            ? (rawValue / 1000000).toFixed(1) +
-                                              "M"
-                                            : rawValue >= 1000
-                                            ? (rawValue / 1000).toFixed(1) + "K"
-                                            : rawValue.toLocaleString();
-                                    return [
-                                        formattedValue,
-                                        overlayOption.label,
-                                    ];
-                                } else {
-                                    const formattedValue =
-                                        typeof rawValue === "number"
-                                            ? rawValue.toLocaleString()
-                                            : rawValue;
-                                    return [
-                                        `${formattedValue}${overlayOption.unit}`,
-                                        overlayOption.label,
-                                    ];
-                                }
-                            }
-                        }
-
-                        return [value, name];
-                    }}
-                    labelFormatter={label => `日期: ${label}`}
-                />
-                <Area
-                    type="monotone"
-                    dataKey="escape"
-                    stroke="#0ea5a4"
-                    fill="#0ea5a4"
-                    fillOpacity={0.3}
-                    strokeWidth={2}
-                    isAnimationActive={false}
-                />
-                {/* 渲染叠加线条 */}
-                {selectedOverlays.map(overlayKey => {
-                    const option = OVERLAY_OPTIONS.find(
-                        opt => opt.key === overlayKey,
-                    );
-                    if (!option) return null;
-
-                    return (
-                        <Line
-                            key={overlayKey}
-                            type="monotone"
-                            dataKey={overlayKey}
-                            stroke={option.color}
-                            strokeWidth={1.5}
-                            strokeDasharray="3 3"
-                            dot={false}
-                            isAnimationActive={false}
-                        />
-                    );
-                })}
-                {showTrend && settings.showGrid && (
-                    <>
-                        <ReferenceLine
-                            y={settings.dangerThreshold}
-                            stroke="#ef4444"
-                            strokeDasharray="3 3"
-                            label={{ value: "危险线", position: "top" }}
-                        />
-                        <ReferenceLine
-                            y={settings.warningThreshold}
-                            stroke="#f59e0b"
-                            strokeDasharray="3 3"
-                            label={{ value: "警告线", position: "top" }}
-                        />
-                    </>
-                )}
-                {settings.showBrush && (
-                    <Brush
-                        dataKey="date"
-                        height={30}
-                        stroke="#94a3b8"
-                        travellerWidth={10}
-                    />
-                )}
-            </AreaChart>
-        );
-
-        const renderBar = () => (
-            <BarChart {...commonProps}>
-                {settings.showGrid && (
-                    <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#f1f5f9"
-                    />
-                )}
-                <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 12 }}
-                />
-                <YAxis
-                    domain={[0, 100]}
-                    tick={{ fontSize: 12 }}
-                />
-                <Tooltip
-                    wrapperStyle={{
-                        borderRadius: 8,
-                        boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
-                        border: "none",
-                    }}
-                    contentStyle={{
-                        background: "white",
-                        borderRadius: 8,
-                    }}
-                    formatter={(value, name, props) => {
-                        if (name === "escape") return [value, "逃顶指数"];
-
-                        // 处理叠加数据的显示
-                        const overlayOption = OVERLAY_OPTIONS.find(
-                            opt => opt.key === name,
-                        );
-                        if (overlayOption) {
-                            const rawValue = props.payload.raw?.[name];
-                            if (rawValue !== null && rawValue !== undefined) {
-                                // 根据不同的指标类型进行格式化
-                                if (
-                                    name === "shanghai_close" ||
-                                    name === "hs300_close"
-                                ) {
-                                    const formattedValue =
-                                        parseFloat(rawValue).toFixed(2);
-                                    return [
-                                        `${formattedValue}点`,
-                                        overlayOption.label,
-                                    ];
-                                } else if (name === "hs300_turnover_rate") {
-                                    const formattedValue =
-                                        parseFloat(rawValue).toFixed(2);
-                                    return [
-                                        `${formattedValue}%`,
-                                        overlayOption.label,
-                                    ];
-                                } else if (name === "margin_total") {
-                                    const formattedValue =
-                                        parseFloat(rawValue).toFixed(1);
-                                    return [
-                                        `${formattedValue}亿`,
-                                        overlayOption.label,
-                                    ];
-                                } else if (name === "douyin_search") {
-                                    const formattedValue =
-                                        rawValue >= 1000000
-                                            ? (rawValue / 1000000).toFixed(1) +
-                                              "M"
-                                            : rawValue >= 1000
-                                            ? (rawValue / 1000).toFixed(1) + "K"
-                                            : rawValue.toLocaleString();
-                                    return [
-                                        formattedValue,
-                                        overlayOption.label,
-                                    ];
-                                } else {
-                                    const formattedValue =
-                                        typeof rawValue === "number"
-                                            ? rawValue.toLocaleString()
-                                            : rawValue;
-                                    return [
-                                        `${formattedValue}${overlayOption.unit}`,
-                                        overlayOption.label,
-                                    ];
-                                }
-                            }
-                        }
-
-                        return [value, name];
-                    }}
-                    labelFormatter={label => `日期: ${label}`}
-                />
-                <Bar
-                    dataKey="escape"
-                    fill="#0ea5a4"
-                    radius={[2, 2, 0, 0]}
-                />
-                {/* 渲染叠加线条 */}
-                {selectedOverlays.map(overlayKey => {
-                    const option = OVERLAY_OPTIONS.find(
-                        opt => opt.key === overlayKey,
-                    );
-                    if (!option) return null;
-
-                    return (
-                        <Line
-                            key={overlayKey}
-                            type="monotone"
-                            dataKey={overlayKey}
-                            stroke={option.color}
-                            strokeWidth={1.5}
-                            strokeDasharray="3 3"
-                            dot={false}
-                            isAnimationActive={false}
-                        />
-                    );
-                })}
-                {showTrend && settings.showGrid && (
-                    <>
-                        <ReferenceLine
-                            y={settings.dangerThreshold}
-                            stroke="#ef4444"
-                            strokeDasharray="3 3"
-                            label={{ value: "危险线", position: "top" }}
-                        />
-                        <ReferenceLine
-                            y={settings.warningThreshold}
-                            stroke="#f59e0b"
-                            strokeDasharray="3 3"
-                            label={{ value: "警告线", position: "top" }}
-                        />
-                    </>
-                )}
-                {settings.showBrush && (
-                    <Brush
-                        dataKey="date"
-                        height={30}
-                        stroke="#94a3b8"
-                        travellerWidth={10}
-                    />
-                )}
-            </BarChart>
-        );
-
-        switch (chartType) {
-            case "area":
-                return renderArea();
-            case "bar":
-                return renderBar();
-            default:
-                return renderLine();
-        }
     }
 
     return (
         <div className="min-h-screen bg-[linear-gradient(180deg,#f7f8fa,white)] p-6">
             <Toaster position="top-right" />
+            <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
             <div className="max-w-7xl mx-auto">
                 <header className="flex items-center justify-between mb-6">
                     <div>
-                        <h1 className="text-2xl font-semibold text-slate-900">
-                            牛市逃顶指数仪表盘
+                        <h1 className="text-2xl font-semibold text-slate-900 flex items-center gap-2">
+                            <span>🐂</span>
+                            A股牛市逃顶指数仪表盘
                         </h1>
                         <p className="mt-1 text-sm text-slate-500">
                             通过市场与情绪因子合成的逃顶指数（0-100），高分表明市场过热
@@ -1117,11 +880,11 @@ export default function EscapeIndexDashboard() {
                     </div>
                     <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 sm:gap-6">
                         <div className="flex flex-col items-end">
-                            <span className="text-sm font-medium text-slate-600 mb-1">
-                                当前逃顶指数
-                            </span>
                             <div className="flex flex-col items-end gap-2">
                                 <div className="flex items-baseline gap-3">
+                                    <span className="text-sm font-medium text-slate-600 mb-1">
+                                        当前逃顶指数
+                                    </span>
                                     <span className="text-5xl font-bold text-slate-900">
                                         {latestSummary &&
                                             (latestSummary.escape_index_0_100 ??
@@ -1160,6 +923,13 @@ export default function EscapeIndexDashboard() {
                             onSettingsChange={handleSettingsChange}
                             onReset={handleSettingsReset}
                         />
+                        <button
+                            onClick={() => setIsAboutOpen(true)}
+                            className="p-2 rounded-lg bg-white shadow-md ring-1 ring-gray-100 hover:bg-gray-50"
+                            title="关于"
+                        >
+                            <Info className="w-5 h-5 text-gray-600" />
+                        </button>
                     </div>
                 </header>
 
@@ -1214,6 +984,56 @@ export default function EscapeIndexDashboard() {
                                                 未触发
                                             </span>
                                         )}
+                                        {rawData &&
+                                            rawData.length > 0 &&
+                                            (() => {
+                                                const dangerDays =
+                                                    calculateConsecutiveDays(
+                                                        rawData,
+                                                        settings.dangerThreshold,
+                                                    );
+                                                const warningDays =
+                                                    calculateConsecutiveDays(
+                                                        rawData,
+                                                        settings.warningThreshold,
+                                                    );
+                                                const safeDays =
+                                                    calculateConsecutiveDaysBelow(
+                                                        rawData,
+                                                        settings.safeThreshold,
+                                                    );
+
+                                                return (
+                                                    <div className="flex flex-col">
+                                                        {dangerDays > 0 && (
+                                                            <span className="text-xs text-red-500 font-medium">
+                                                                连续{dangerDays}
+                                                                天高于危险线
+                                                            </span>
+                                                        )}
+                                                        {warningDays > 0 &&
+                                                            dangerDays ===
+                                                                0 && (
+                                                                <span className="text-xs text-red-500 font-medium">
+                                                                    连续
+                                                                    {
+                                                                        warningDays
+                                                                    }
+                                                                    天高于警告线
+                                                                </span>
+                                                            )}
+                                                        {dangerDays === 0 &&
+                                                            warningDays ===
+                                                                0 && (
+                                                                <span className="text-xs text-green-500 font-medium">
+                                                                    连续
+                                                                    {safeDays}
+                                                                    天低于安全线
+                                                                </span>
+                                                            )}
+                                                    </div>
+                                                );
+                                            })()}
                                     </div>
                                 </div>
 
@@ -1342,9 +1162,6 @@ export default function EscapeIndexDashboard() {
                                     <div className="text-xs text-slate-400 hidden sm:inline">
                                         (悬停可查看当日行情)
                                     </div>
-                                    {trendAnalysis && (
-                                        <TrendIndicator trend={trendAnalysis} />
-                                    )}
                                 </div>
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
                                     <div className="flex items-center gap-1 text-sm">
@@ -1549,50 +1366,6 @@ export default function EscapeIndexDashboard() {
                                                         : "ring-1 ring-gray-100"
                                                 }`}>
                                                 年
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <div className="text-sm text-slate-500">
-                                            图表类型
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <button
-                                                onClick={() =>
-                                                    setChartType("line")
-                                                }
-                                                className={`p-1.5 rounded-md ${
-                                                    chartType === "line"
-                                                        ? "bg-slate-900 text-white"
-                                                        : "ring-1 ring-gray-100"
-                                                }`}
-                                                title="折线图">
-                                                <LineChartIcon className="w-3 h-3" />
-                                            </button>
-                                            <button
-                                                onClick={() =>
-                                                    setChartType("area")
-                                                }
-                                                className={`p-1.5 rounded-md ${
-                                                    chartType === "area"
-                                                        ? "bg-slate-900 text-white"
-                                                        : "ring-1 ring-gray-100"
-                                                }`}
-                                                title="面积图">
-                                                <BarChart3 className="w-3 h-3" />
-                                            </button>
-                                            <button
-                                                onClick={() =>
-                                                    setChartType("bar")
-                                                }
-                                                className={`p-1.5 rounded-md ${
-                                                    chartType === "bar"
-                                                        ? "bg-slate-900 text-white"
-                                                        : "ring-1 ring-gray-100"
-                                                }`}
-                                                title="柱状图">
-                                                <BarChart3 className="w-3 h-3" />
                                             </button>
                                         </div>
                                     </div>

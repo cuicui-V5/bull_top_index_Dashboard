@@ -1,7 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Read(c:\\Users\\cuicui\\Desktop\\股市逃顶\\stock_data\\bullTopDashboard\\src\\components/**)",
+      "Read(c:\\Users\\cuicui\\Desktop\\股市逃顶\\stock_data/**)",
+      "Read(c:\\Users\\cuicui\\Desktop\\股市逃顶\\stock_data/**)",
+      "Read(c:\\Users\\cuicui\\Desktop\\股市逃顶\\stock_data\\bullTopDashboard/**)",
+      "Read(c:\\Users\\cuicui\\Desktop\\股市逃顶\\stock_data\\bullTopDashboard\\public/**)",
+      "Read(c:\\Users\\cuicui\\Desktop\\股市逃顶\\stock_data\\bullTopDashboard/**)",
+      "Read(c:\\Users\\cuicui\\Desktop\\股市逃顶\\stock_data/**)",
+      "Read(c:\\Users\\cuicui\\Desktop\\股市逃顶\\stock_data\\bulltop_escape_calc/**)",
+      "Read(c:\\Users\\cuicui\\Desktop\\股市逃顶\\stock_data\\bullTopServer/**)",
+      "Read(c:\\Users\\cuicui\\Desktop\\股市逃顶\\stock_data\\bulltop_escape_calc/**)",
+      "Read(c:\\Users\\cuicui\\Desktop\\股市逃顶\\stock_data\\bullTopServer/**)",
+      "Read(c:\\Users\\cuicui\\Desktop\\股市逃顶\\stock_data\\bulltop_escape_calc/**)",
+      "Read(c:\\Users\\cuicui\\Desktop\\股市逃顶\\stock_data\\bullTopServer/**)"
     ],
     "deny": [],
     "ask": []
