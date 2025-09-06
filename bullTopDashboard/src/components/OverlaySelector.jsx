@@ -67,7 +67,7 @@ const OVERLAY_OPTIONS = [
     },
     {
         key: "csi_turnover_amt",
-        label: "中证全指成交额",
+        label: "全市场成交额",
         color: "#f97316",
         unit: "万亿",
         scale: "linear",

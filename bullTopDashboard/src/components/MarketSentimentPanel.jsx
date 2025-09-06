@@ -177,6 +177,15 @@ export default function MarketSentimentPanel({ data, latestData }) {
         icon,
         color = "blue",
     ) => {
+        // 格式化成交额显示 - 原始数据单位是元，转换为万亿
+        const formatTurnover = (val) => {
+            if (val === null || val === undefined || val === "") return "—";
+            if (typeof val === "number") {
+                return (val / 1000000000000).toFixed(1) + " 万亿";
+            }
+            return val;
+        };
+
         return (
             <div className="p-3 rounded-lg bg-gray-50">
                 <div className="flex items-center justify-between mb-2">
@@ -207,11 +216,7 @@ export default function MarketSentimentPanel({ data, latestData }) {
                     )}
                 </div>
                 <div className="text-lg font-bold">
-                    {value !== null && value !== undefined && value !== ""
-                        ? typeof value === "number"
-                            ? (value / 10000).toFixed(2) + " 万亿"
-                            : value
-                        : "—"}
+                    {formatTurnover(value)}
                 </div>
             </div>
         );
@@ -291,7 +296,7 @@ export default function MarketSentimentPanel({ data, latestData }) {
                     )}
 
                     {renderTurnoverIndicator(
-                        "中证全指成交额",
+                        "全市场成交额",
                         latestData.csi_turnover_amt,
                         sentiment.csiTurnover,
                         <Activity className="w-4 h-4" />,

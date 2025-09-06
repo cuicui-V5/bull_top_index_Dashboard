@@ -111,7 +111,7 @@ const OVERLAY_OPTIONS = [
     },
     {
         key: "csi_turnover_amt",
-        label: "中证全指成交额",
+        label: "全市场成交额",
         color: "#f97316",
         unit: "万亿",
         scale: "linear",
@@ -152,6 +152,7 @@ function parseRow(r) {
         hs300_turnover_log: safeNum(r.hs300_turnover_log),
         hs300_amplitude: safeNum(r.hs300_amplitude),
         hs300_turnover_rate: safeNum(r.hs300_turnover_rate),
+        csi_turnover_amt: safeNum(r.csi_turnover_amt),
         margin_total: safeNum(r.margin_total),
         douyin_search: safeNum(r.douyin_search),
         crowding_z: safeNum(r.crowding_z),
@@ -739,8 +740,8 @@ export default function EscapeIndexDashboard() {
                                             ? (rawValue / 1000).toFixed(1) + "K"
                                             : rawValue.toLocaleString();
                                     } else if (name === "csi_turnover_amt") {
-                                        // 中证全指成交额转换为万亿单位
-                                        formattedValue = (rawValue / 10000).toFixed(2) + "万亿";
+                                        // 中证全指成交额转换为万亿单位（原始数据单位是元）
+                                        formattedValue = (rawValue / 1000000000000).toFixed(1) + "万亿";
                                     } else {
                                         formattedValue = rawValue.toLocaleString();
                                     }
@@ -786,9 +787,9 @@ export default function EscapeIndexDashboard() {
                                             : "—"}
                                     </div>
                                     <div>
-                                        中证全指成交额:{" "}
+                                        全市场成交额:{" "}
                                         {raw.csi_turnover_amt !== undefined
-                                            ? (raw.csi_turnover_amt / 10000).toFixed(2) + "万亿"
+                                            ? (raw.csi_turnover_amt / 1000000000000).toFixed(1) + "万亿"
                                             : "—"}
                                     </div>
                                     <div>
@@ -1434,11 +1435,11 @@ export default function EscapeIndexDashboard() {
                                               .reverse()
                                               .find(
                                                   d =>
-                                                      d.douyin_search !==
+                                                      d.csi_turnover_amt !==
                                                           null &&
-                                                      d.douyin_search !==
+                                                      d.csi_turnover_amt !==
                                                           undefined,
-                                              )
+                                              ) || [...filtered].reverse()[0]
                                         : null
                                 }
                             />

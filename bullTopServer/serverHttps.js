@@ -77,7 +77,7 @@ app.use(cors());
 app.use(accessLogger);
 
 // 定义 CSV 文件路径
-const csvFilePath = path.join(__dirname, "逃顶指数.csv");
+const csvFilePath = path.join(__dirname, "data", "逃顶指数.csv");
 
 // 创建一个变量来存储缓存的数据
 let cachedData = null;

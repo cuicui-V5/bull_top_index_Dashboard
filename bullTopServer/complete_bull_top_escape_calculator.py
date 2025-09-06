@@ -30,14 +30,14 @@ warnings.filterwarnings("ignore")
 
 # 默认文件配置
 DEFAULT_FILES = {
-    "hs300": "沪深300历史数据.csv",
-    "csiall": "中证全指历史数据.csv",
-    "shanghai": "上证指数历史数据.csv",  # 新增上证指数
-    "margin": "融资融券历史数据.csv",
-    "douyin": "抖音搜索指数.csv",
-    "pe": "沪深300历史市盈率.csv",
+    "hs300": "./data/沪深300历史数据.csv",
+    "csiall": "./data/中证全指历史数据.csv",
+    "shanghai": "./data/上证指数历史数据.csv",  # 新增上证指数
+    "margin": "./data/融资融券历史数据.csv",
+    "douyin": "./data/抖音搜索指数.csv",
+    "pe": "./data/沪深300历史市盈率.csv",
 }
-DEFAULT_OUTPUT = "逃顶指数.csv"
+DEFAULT_OUTPUT = "./data/逃顶指数.csv"
 
 
 def log_message(message, level="INFO"):
