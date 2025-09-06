@@ -296,7 +296,7 @@ def load_csiall(path):
     )
 
     log_message(f"中证全指数据加载完成，共{len(df)}条记录")
-    return df[["日期", "csi_close", "csi_ret", "csi_turnover_log", "csi_amplitude"]]
+    return df[["日期", "csi_close", "csi_ret", "csi_turnover_amt", "csi_turnover_log", "csi_amplitude"]]
 
 
 def load_shanghai(path):
@@ -654,6 +654,7 @@ def main():
             "csi_close",
             "csi_ret",
             "csi_turnover_log",
+            "csi_turnover_amt",  # 新增中证全指成交额原始数据
             "csi_amplitude",
             "shanghai_close",
             "shanghai_ret",

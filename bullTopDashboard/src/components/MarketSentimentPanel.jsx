@@ -58,6 +58,10 @@ export default function MarketSentimentPanel({ data, latestData }) {
                 latestData.hs300_turnover_rate,
                 findPrevWithValue("hs300_turnover_rate"),
             ),
+            csiTurnover: calculateChange(
+                latestData.csi_turnover_amt,
+                findPrevWithValue("csi_turnover_amt"),
+            ),
             crowding: calculateChange(
                 latestData.crowding_z,
                 findPrevWithValue("crowding_z"),
@@ -166,6 +170,53 @@ export default function MarketSentimentPanel({ data, latestData }) {
         );
     };
 
+    const renderTurnoverIndicator = (
+        title,
+        value,
+        change,
+        icon,
+        color = "blue",
+    ) => {
+        return (
+            <div className="p-3 rounded-lg bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        {icon}
+                        <span className="text-sm font-medium">{title}</span>
+                    </div>
+                    {change && (
+                        <div
+                            className={`flex items-center gap-1 text-xs ${
+                                change.trend === "up"
+                                    ? "text-red-600"
+                                    : change.trend === "down"
+                                    ? "text-green-600"
+                                    : "text-gray-600"
+                            }`}>
+                            {change.trend === "up" && (
+                                <TrendingUp className="w-3 h-3" />
+                            )}
+                            {change.trend === "down" && (
+                                <TrendingDown className="w-3 h-3" />
+                            )}
+                            <span>
+                                {change.percent > 0 ? "+" : ""}
+                                {change.percent.toFixed(1)}%
+                            </span>
+                        </div>
+                    )}
+                </div>
+                <div className="text-lg font-bold">
+                    {value !== null && value !== undefined && value !== ""
+                        ? typeof value === "number"
+                            ? (value / 10000).toFixed(2) + " 万亿"
+                            : value
+                        : "—"}
+                </div>
+            </div>
+        );
+    };
+
     const getSentimentLevel = () => {
         const indicators = [
             latestData.douyin_search,
@@ -237,6 +288,14 @@ export default function MarketSentimentPanel({ data, latestData }) {
                         sentiment.margin,
                         <DollarSign className="w-4 h-4" />,
                         "green",
+                    )}
+
+                    {renderTurnoverIndicator(
+                        "中证全指成交额",
+                        latestData.csi_turnover_amt,
+                        sentiment.csiTurnover,
+                        <Activity className="w-4 h-4" />,
+                        "orange",
                     )}
 
                     {renderIndicator(

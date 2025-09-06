@@ -109,6 +109,15 @@ const OVERLAY_OPTIONS = [
         minValue: 0,
         maxValue: 10,
     },
+    {
+        key: "csi_turnover_amt",
+        label: "中证全指成交额",
+        color: "#f97316",
+        unit: "万亿",
+        scale: "linear",
+        minValue: 0,
+        maxValue: null, // 动态计算
+    },
 ];
 
 // Apple-like visual language using Tailwind utility classes (assumes Tailwind is available)
@@ -388,9 +397,19 @@ export default function EscapeIndexDashboard() {
             );
             if (!res.ok) throw new Error(`${res.status}`);
             const json = await res.json();
-            if (!json || !json.data)
-                throw new Error("格式错误: 返回没有data字段");
-            const parsed = json.data
+            if (!json || !json.columns || !json.data)
+                throw new Error("格式错误: 返回数据缺少columns或data字段");
+            
+            // 将列式数据转换为行式数据
+            const rowFormatData = json.data.map(row => {
+                const obj = {};
+                json.columns.forEach((col, index) => {
+                    obj[col] = row[index];
+                });
+                return obj;
+            });
+            
+            const parsed = rowFormatData
                 .map(parseRow)
                 .filter(r => r.date && !Number.isNaN(r.date.getTime()));
             parsed.sort((a, b) => a.date - b.date);
@@ -711,19 +730,23 @@ export default function EscapeIndexDashboard() {
                         if (overlayOption) {
                             const rawValue = props.payload.raw?.[name];
                             if (rawValue !== null && rawValue !== undefined) {
-                                const formattedValue =
-                                    typeof rawValue === "number"
-                                        ? name === "douyin_search"
-                                            ? rawValue >= 1000000
-                                                ? (rawValue / 1000000).toFixed(
-                                                      1,
-                                                  ) + "M"
-                                                : rawValue >= 1000
-                                                ? (rawValue / 1000).toFixed(1) +
-                                                  "K"
-                                                : rawValue.toLocaleString()
-                                            : rawValue.toLocaleString()
-                                        : rawValue;
+                                let formattedValue;
+                                if (typeof rawValue === "number") {
+                                    if (name === "douyin_search") {
+                                        formattedValue = rawValue >= 1000000
+                                            ? (rawValue / 1000000).toFixed(1) + "M"
+                                            : rawValue >= 1000
+                                            ? (rawValue / 1000).toFixed(1) + "K"
+                                            : rawValue.toLocaleString();
+                                    } else if (name === "csi_turnover_amt") {
+                                        // 中证全指成交额转换为万亿单位
+                                        formattedValue = (rawValue / 10000).toFixed(2) + "万亿";
+                                    } else {
+                                        formattedValue = rawValue.toLocaleString();
+                                    }
+                                } else {
+                                    formattedValue = rawValue;
+                                }
                                 return [
                                     `${formattedValue}${overlayOption.unit}`,
                                     overlayOption.label,
@@ -760,6 +783,12 @@ export default function EscapeIndexDashboard() {
                                             ? parseFloat(p.hs300_close).toFixed(
                                                   2,
                                               ) + "点"
+                                            : "—"}
+                                    </div>
+                                    <div>
+                                        中证全指成交额:{" "}
+                                        {raw.csi_turnover_amt !== undefined
+                                            ? (raw.csi_turnover_amt / 10000).toFixed(2) + "万亿"
                                             : "—"}
                                     </div>
                                     <div>

@@ -65,6 +65,15 @@ const OVERLAY_OPTIONS = [
         minValue: 0,
         maxValue: 10,
     },
+    {
+        key: "csi_turnover_amt",
+        label: "中证全指成交额",
+        color: "#f97316",
+        unit: "万亿",
+        scale: "linear",
+        minValue: 0,
+        maxValue: null, // 动态计算
+    },
 ];
 
 export default function OverlaySelector({
