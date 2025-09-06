@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
     LineChart,
     Line,
@@ -362,6 +362,9 @@ export default function EscapeIndexDashboard() {
     const [error, setError] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
     const [isAboutOpen, setIsAboutOpen] = useState(false);
+    
+    // 添加请求状态追踪，防止重复请求
+    const fetchInProgress = useRef(false);
 
     // UI state
     const [rangeStart, setRangeStart] = useState(null);
@@ -389,17 +392,14 @@ export default function EscapeIndexDashboard() {
         "shanghai_close",
     ]);
 
-    const fetchData = useCallback(async (showLoading = true) => {
-        if (showLoading) setLoading(true);
-        setError(null);
+    // 加载本地数据
+    const loadLocalData = useCallback(async () => {
         try {
-            const res = await fetch(
-                "https://chuanjiabao.cuijunyu.win:3001/api/data",
-            );
-            if (!res.ok) throw new Error(`${res.status}`);
-            const json = await res.json();
+            const response = await fetch('/data/data.json');
+            if (!response.ok) throw new Error(`本地数据加载失败: ${response.status}`);
+            const json = await response.json();
             if (!json || !json.columns || !json.data)
-                throw new Error("格式错误: 返回数据缺少columns或data字段");
+                throw new Error("本地数据格式错误: 缺少columns或data字段");
             
             // 将列式数据转换为行式数据
             const rowFormatData = json.data.map(row => {
@@ -415,24 +415,87 @@ export default function EscapeIndexDashboard() {
                 .filter(r => r.date && !Number.isNaN(r.date.getTime()));
             parsed.sort((a, b) => a.date - b.date);
 
-            // 调试信息
-            console.log("Data fetched - total records:", parsed.length);
-            console.log("Latest record:", parsed[parsed.length - 1]);
-            console.log(
-                "Latest douyin_search:",
-                parsed[parsed.length - 1]?.douyin_search,
-            );
+            console.log("本地数据加载成功 - 总记录数:", parsed.length);
+            return parsed;
+        } catch (error) {
+            console.error("本地数据加载失败:", error);
+            return null;
+        }
+    }, []);
 
-            setRawData(parsed);
-            // default date range: quickRange
-            const latest = parsed[parsed.length - 1].date;
-            setRangeEnd(latest.toISOString().slice(0, 10));
-            const defaultStart = new Date(latest);
-            defaultStart.setFullYear(defaultStart.getFullYear() - 1);
-            setRangeStart(defaultStart.toISOString().slice(0, 10));
+    const fetchData = useCallback(async (showLoading = true) => {
+        // 防止重复请求
+        if (fetchInProgress.current) {
+            console.log("数据请求正在进行中，跳过重复请求");
+            return;
+        }
+        
+        fetchInProgress.current = true;
+        
+        if (showLoading) setLoading(true);
+        setError(null);
+        
+        try {
+            // 1. 首先加载本地数据
+            const localData = await loadLocalData();
+            if (localData) {
+                setRawData(localData);
+                // 设置默认日期范围
+                const latest = localData[localData.length - 1].date;
+                setRangeEnd(latest.toISOString().slice(0, 10));
+                const defaultStart = new Date(latest);
+                defaultStart.setFullYear(defaultStart.getFullYear() - 1);
+                setRangeStart(defaultStart.toISOString().slice(0, 10));
+                
+                console.log("已显示本地数据");
+            }
+            
+            // 2. 尝试获取远程数据
+            try {
+                const res = await fetch(
+                    "https://chuanjiabao.cuijunyu.win:3001/api/data",
+                );
+                if (!res.ok) throw new Error(`${res.status}`);
+                const json = await res.json();
+                if (!json || !json.columns || !json.data)
+                    throw new Error("格式错误: 返回数据缺少columns或data字段");
+                
+                // 将列式数据转换为行式数据
+                const rowFormatData = json.data.map(row => {
+                    const obj = {};
+                    json.columns.forEach((col, index) => {
+                        obj[col] = row[index];
+                    });
+                    return obj;
+                });
+                
+                const parsed = rowFormatData
+                    .map(parseRow)
+                    .filter(r => r.date && !Number.isNaN(r.date.getTime()));
+                parsed.sort((a, b) => a.date - b.date);
 
-            if (showLoading) {
-                toast.success("数据加载成功");
+                // 调试信息
+                console.log("远程数据获取成功 - 总记录数:", parsed.length);
+                console.log("最新记录:", parsed[parsed.length - 1]);
+
+                setRawData(parsed);
+                // 更新日期范围
+                const latest = parsed[parsed.length - 1].date;
+                setRangeEnd(latest.toISOString().slice(0, 10));
+                const defaultStart = new Date(latest);
+                defaultStart.setFullYear(defaultStart.getFullYear() - 1);
+                setRangeStart(defaultStart.toISOString().slice(0, 10));
+
+                if (showLoading) {
+                    toast.success("数据已更新");
+                }
+            } catch (remoteError) {
+                console.error("远程数据获取失败，继续使用本地数据:", remoteError);
+                if (showLoading && localData) {
+                    toast.success("已加载本地数据");
+                } else if (showLoading && !localData) {
+                    throw remoteError; // 如果本地数据也没有，抛出错误
+                }
             }
         } catch (e) {
             console.error(e);
@@ -442,8 +505,9 @@ export default function EscapeIndexDashboard() {
         } finally {
             if (showLoading) setLoading(false);
             setRefreshing(false);
+            fetchInProgress.current = false;
         }
-    }, []);
+    }, [loadLocalData]);
 
     useEffect(() => {
         fetchData();

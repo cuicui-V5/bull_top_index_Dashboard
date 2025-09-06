@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node update-data.js && vite build",
+    "build:no-update": "vite build",
+    "update-data": "node update-data.js",
     "preview": "vite preview",
     "start": "vite"
   },
